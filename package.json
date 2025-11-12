@@ -1,0 +1,30 @@
+{
+  "name": "batch-call-runner",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cssdao/batch-call-runner.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cssdao/batch-call-runner/issues"
+  },
+  "homepage": "https://github.com/cssdao/batch-call-runner#readme",
+  "devDependencies": {
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^24.10.1",
+    "ethers": "^6.15.0",
+    "inquirer": "^12.11.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
