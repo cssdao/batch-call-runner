@@ -21,6 +21,7 @@ interface Results {
   contractAddress: string;
   inputData: string;
   callCount: number;
+  concurrency: number;
   results: CallResult[];
 }
 
@@ -68,6 +69,19 @@ async function getUserInput() {
       validate: (input: string) => {
         if (!input.startsWith("0x") || !/^[0-9a-fA-F]+$/.test(input.slice(2))) {
           return "请输入有效的十六进制数据，以0x开头";
+        }
+        return true;
+      },
+    },
+    {
+      type: "input",
+      name: "concurrency",
+      message: "请输入并发执行数量 (1-10):",
+      default: "1",
+      validate: (input: string) => {
+        const num = parseInt(input);
+        if (isNaN(num) || num < 1 || num > 10) {
+          return "请输入1-10之间的数字";
         }
         return true;
       },
@@ -162,92 +176,152 @@ function generateInputDataWithAddress(
   return `${commonPrefix}${paddedAddress}`;
 }
 
+async function executeSingleTransaction(
+  provider: ethers.JsonRpcProvider,
+  privateKey: string,
+  contractAddress: string,
+  inputData: string,
+  index: number,
+  total: number,
+): Promise<CallResult> {
+  const wallet = new ethers.Wallet(privateKey, provider);
+  const address = wallet.address;
+
+  console.log(`\n📤 钱包 ${index + 1}/${total}: ${address}`);
+
+  const balance = await provider.getBalance(address);
+  console.log(`   当前余额: ${ethers.formatEther(balance)} ETH`);
+
+  try {
+    // 为每个私钥生成对应的input data
+    const inputDataWithAddress = generateInputDataWithAddress(
+      inputData,
+      address,
+    );
+
+    console.log(`   准备发送交易...`);
+
+    const gasEstimate = await provider.estimateGas({
+      to: contractAddress,
+      data: inputDataWithAddress,
+      value: 0,
+    });
+
+    const feeData = await provider.getFeeData();
+    const gasPrice = feeData.gasPrice || ethers.parseUnits("20", "gwei");
+
+    const tx = await wallet.sendTransaction({
+      to: contractAddress,
+      data: inputDataWithAddress,
+      value: 0,
+      gasLimit: gasEstimate + (gasEstimate * 20n) / 100n, // 增加20%的gas限制
+      gasPrice: gasPrice,
+    });
+
+    console.log(`   交易哈希: ${tx.hash}`);
+    console.log(`   等待确认...`);
+
+    const receipt = await tx.wait();
+
+    if (receipt) {
+      const result: CallResult = {
+        hash: tx.hash,
+        success: true,
+        gasEstimate: gasEstimate.toString(),
+        actualGasUsed: receipt.gasUsed.toString(),
+        blockNumber: receipt.blockNumber,
+        address: address,
+        privateKey: privateKey.substring(0, 10) + "...",
+      };
+
+      console.log(`   ✅ 确认成功!`);
+      console.log(`   区块号: ${result.blockNumber}`);
+
+      return result;
+    }
+
+    throw new Error("交易收据为空");
+  } catch (error: any) {
+    const result: CallResult = {
+      success: false,
+      error: error.message,
+      address: address,
+      privateKey: privateKey.substring(0, 10) + "...",
+    };
+
+    console.log(`   ❌ 交易失败: ${error.message}`);
+    return result;
+  }
+}
+
 async function executeTransactions(
   provider: ethers.JsonRpcProvider,
   privateKeys: string[],
   contractAddress: string,
   inputData: string,
+  concurrency: number = 1,
 ): Promise<CallResult[]> {
-  console.log("\n🔄 执行交易");
+  console.log(`\n🔄 执行交易 (并发数: ${concurrency})`);
   console.log("=".repeat(40));
 
-  const results: CallResult[] = [];
-  let totalGasUsed = 0n;
-
-  for (let i = 0; i < privateKeys.length; i++) {
-    const privateKey = privateKeys[i];
-    const wallet = new ethers.Wallet(privateKey, provider);
-    const address = wallet.address;
-
-    console.log(`\n📤 钱包 ${i + 1}/${privateKeys.length}: ${address}`);
-
-    const balance = await provider.getBalance(address);
-    console.log(`   当前余额: ${ethers.formatEther(balance)} ETH`);
-
-    try {
-      // 为每个私钥生成对应的input data
-      const inputDataWithAddress = generateInputDataWithAddress(
+  if (concurrency === 1) {
+    // 顺序执行
+    const results: CallResult[] = [];
+    for (let i = 0; i < privateKeys.length; i++) {
+      const result = await executeSingleTransaction(
+        provider,
+        privateKeys[i],
+        contractAddress,
         inputData,
-        address,
+        i,
+        privateKeys.length,
       );
-
-      console.log(`   准备发送交易...`);
-
-      const gasEstimate = await provider.estimateGas({
-        to: contractAddress,
-        data: inputDataWithAddress,
-        value: 0,
-      });
-
-      const feeData = await provider.getFeeData();
-      const gasPrice = feeData.gasPrice || ethers.parseUnits("20", "gwei");
-
-      const tx = await wallet.sendTransaction({
-        to: contractAddress,
-        data: inputDataWithAddress,
-        value: 0,
-        gasLimit: gasEstimate + (gasEstimate * 20n) / 100n, // 增加20%的gas限制
-        gasPrice: gasPrice,
-      });
-
-      console.log(`   交易哈希: ${tx.hash}`);
-      console.log(`   等待确认...`);
-
-      const receipt = await tx.wait();
-
-      if (receipt) {
-        totalGasUsed += receipt.gasUsed;
-        const result: CallResult = {
-          hash: tx.hash,
-          success: true,
-          gasEstimate: gasEstimate.toString(),
-          actualGasUsed: receipt.gasUsed.toString(),
-          blockNumber: receipt.blockNumber,
-          address: address,
-          privateKey: privateKey.substring(0, 10) + "...",
-        };
-
-        console.log(`   ✅ 确认成功!`);
-        console.log(`   区块号: ${result.blockNumber}`);
-
-        results.push(result);
-      }
-    } catch (error: any) {
-      const result: CallResult = {
-        success: false,
-        error: error.message,
-        address: address,
-        privateKey: privateKey.substring(0, 10) + "...",
-      };
-
-      console.log(`   ❌ 交易失败: ${error.message}`);
       results.push(result);
-    }
 
-    // 添加延迟避免nonce冲突
-    if (i < privateKeys.length - 1) {
-      console.log("等待3秒后处理下一个钱包...");
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      // 添加延迟避免nonce冲突
+      if (i < privateKeys.length - 1) {
+        console.log("等待3秒后处理下一个钱包...");
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    }
+    return results;
+  }
+
+  // 并发执行
+  const results: CallResult[] = [];
+  const chunks: string[][] = [];
+
+  // 将私钥分成多个块
+  for (let i = 0; i < privateKeys.length; i += concurrency) {
+    chunks.push(privateKeys.slice(i, i + concurrency));
+  }
+
+  console.log(`总共 ${chunks.length} 个批次，每批最多 ${concurrency} 个交易`);
+
+  for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+    const chunk = chunks[chunkIndex];
+    console.log(`\n🔄 执行第 ${chunkIndex + 1}/${chunks.length} 批次...`);
+
+    // 并发执行当前批次的交易
+    const promises = chunk.map(async (privateKey, indexInChunk) => {
+      const globalIndex = chunkIndex * concurrency + indexInChunk;
+      return executeSingleTransaction(
+        provider,
+        privateKey,
+        contractAddress,
+        inputData,
+        globalIndex,
+        privateKeys.length,
+      );
+    });
+
+    const chunkResults = await Promise.all(promises);
+    results.push(...chunkResults);
+
+    // 批次之间添加延迟
+    if (chunkIndex < chunks.length - 1) {
+      console.log(`\n⏳ 批次完成，等待5秒后执行下一批次...`);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
 
@@ -297,10 +371,11 @@ async function main() {
     await displayWelcome();
 
     const chain = await selectChain();
-    const { contractAddress, inputData } = await getUserInput();
+    const { contractAddress, inputData, concurrency } = await getUserInput();
 
     console.log(`\n选择的网络: ${chain.name}`);
     console.log(`RPC URL: ${chain.rpcUrl}`);
+    console.log(`并发数量: ${concurrency}`);
 
     const provider = await createProvider(chain);
 
@@ -313,6 +388,7 @@ async function main() {
       privateKeys,
       contractAddress,
       inputData,
+      parseInt(concurrency),
     );
 
     const resultsData: Results = {
@@ -321,6 +397,7 @@ async function main() {
       contractAddress,
       inputData,
       callCount: privateKeys.length,
+      concurrency: parseInt(concurrency),
       results,
     };
 
