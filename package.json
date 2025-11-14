@@ -6,6 +6,7 @@
   "scripts": {
     "start": "ts-node src/main.ts",
     "address": "ts-node src/addresses.ts",
+    "address-balance": "ts-node src/addresses.ts --balance",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -56,7 +56,7 @@ export async function executeSingleTransaction(
     if (!receipt) {
       throw new Error("Transaction receipt is null.");
     }
-    console.log(`   ✅ 交易成功! 区块号: ${receipt.blockNumber}`);
+    console.log(`✅ 交易成功! 区块号: ${receipt.blockNumber}`);
     return {
       hash: tx.hash,
       success: true,
@@ -77,24 +77,40 @@ export async function executeTransactions(
   chainId: number,
   concurrency = 1,
 ): Promise<CallResult[]> {
-  const results: CallResult[] = [];
-  for (let i = 0; i < privateKeys.length; i += concurrency) {
-    const chunk = privateKeys.slice(i, i + concurrency);
-    const chunkResults = await Promise.all(
-      chunk.map((pk) =>
-        executeSingleTransaction(
+  const results: CallResult[] = new Array(privateKeys.length);
+  let index = 0;
+
+  // 一个 worker：持续取任务执行
+  const worker = async () => {
+    while (true) {
+      const cur = index++;
+      if (cur >= privateKeys.length) return;
+
+      const pk = privateKeys[cur];
+      try {
+        results[cur] = await executeSingleTransaction(
           provider,
           pk,
           contractAddress,
           functionName,
           params,
           chainId,
-        ),
-      ),
-    );
-    results.push(...chunkResults);
-    if (i + concurrency < privateKeys.length)
-      await new Promise((r) => setTimeout(r, 3000));
-  }
+        );
+      } catch (err) {
+        results[cur] = {
+          success: false,
+          error: (err as any).message || String(err),
+          address: new ethers.Wallet(pk).address, // 即使失败也记录地址
+        };
+      }
+
+      // 小节流，防卡链
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  };
+
+  // 启动 concurrency 个 worker 并行执行
+  await Promise.all(Array.from({ length: concurrency }, worker));
+
   return results;
 }

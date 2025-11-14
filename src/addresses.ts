@@ -2,9 +2,33 @@ import fs from "fs";
 import path from "path";
 import { ethers } from "ethers";
 
+// 检查是否包含 --balance 参数
+const includeBalance = process.argv.includes("--balance");
+
+// 创建 provider 连接到以太坊网络 (使用主网)
+const provider = new ethers.JsonRpcProvider(
+  "https://ethereum-rpc.publicnode.com",
+);
+
+/**
+ * 获取地址的ETH余额
+ */
+async function getAddressBalance(address: string): Promise<string> {
+  try {
+    const balance = await provider.getBalance(address);
+    // 将 wei 转换为 ETH
+    const ethBalance = ethers.formatEther(balance);
+    return parseFloat(ethBalance).toFixed(6);
+  } catch (error) {
+    console.error(`获取地址 ${address} 余额失败:`, error);
+    return "0.000000";
+  }
+}
+
 /**
  * 从 wallets.txt 读取私钥并生成对应的地址
  * 将生成的地址写入到 address.txt 文件中
+ * 如果包含 --balance 参数，则生成地址-金额格式
  */
 async function generateAddresses(): Promise<void> {
   try {
@@ -49,7 +73,15 @@ async function generateAddresses(): Promise<void> {
     for (let i = 0; i < validKeys.length; i++) {
       try {
         const wallet = new ethers.Wallet(validKeys[i]);
-        addresses.push(wallet.address);
+
+        if (includeBalance) {
+          // 获取地址余额
+          const balance = await getAddressBalance(wallet.address);
+          const addressWithBalance = `${wallet.address}-${balance}`;
+          addresses.push(addressWithBalance);
+        } else {
+          addresses.push(wallet.address);
+        }
 
         // 显示进度
         if ((i + 1) % 10 === 0 || i === validKeys.length - 1) {
@@ -66,7 +98,7 @@ async function generateAddresses(): Promise<void> {
 
     fs.writeFileSync(addressPath, addressContent, "utf8");
 
-    console.log("\n✅ 地址生成完成！");
+    console.log("✅ 地址生成完成！");
     console.log(`📄 已生成 ${addresses.length} 个地址，保存到: address.txt`);
   } catch (error) {
     console.error("❌ 生成地址时发生错误:", error);
