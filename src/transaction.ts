@@ -1,36 +1,36 @@
 import { ethers } from "ethers";
 import { CallResult } from "./types";
-import { processInputData } from "./utils";
-import { getInputDataFromABI } from "./abi";
+import { generateInputData } from "./abi";
+import { SUPPORTED_CHAINS } from "./config";
 
 export async function executeSingleTransaction(
   provider: ethers.JsonRpcProvider,
   privateKey: string,
   contractAddress: string,
-): Promise<CallResult> {
+  functionName: string,
+  params: any[],
+  chainId: number,
+): Promise<any> {
   const wallet = new ethers.Wallet(privateKey, provider);
   const address = wallet.address;
   const balance = await provider.getBalance(address);
-  const inputData = await getInputDataFromABI(address);
+  const inputData = generateInputData(address, functionName, params);
 
   console.log(
-    `\n📤 钱包: ${address}，当前余额: ${ethers.formatEther(balance)} ETH`,
+    `📤 钱包: ${address}，当前余额: ${ethers.formatEther(balance)} ETH`,
   );
 
   try {
-    const txData = processInputData(inputData, wallet.address);
     const gasEstimate = await provider.estimateGas({
       to: contractAddress,
-      data: txData,
+      data: inputData,
       value: 0,
     });
     const feeData = await provider.getFeeData();
-
     // 计算预估的gas费用
     const gasLimit = gasEstimate + (gasEstimate * 20n) / 100n;
     const gasPrice = feeData.gasPrice || ethers.parseUnits("20", "gwei");
     const estimatedGasCost = gasLimit * gasPrice;
-
     // 检查余额是否足够支付gas费用
     if (balance < estimatedGasCost) {
       const neededEth = ethers.formatEther(estimatedGasCost - balance);
@@ -41,16 +41,17 @@ export async function executeSingleTransaction(
         address: wallet.address,
       };
     }
-
-    console.log(`   准备发送交易...`);
     const tx = await wallet.sendTransaction({
       to: contractAddress,
-      data: txData,
+      data: inputData,
       value: 0,
       gasLimit: gasLimit,
       gasPrice: gasPrice,
     });
-    console.log(`   交易哈希: ${tx.hash}`);
+    const explorerUrl = SUPPORTED_CHAINS.find(
+      (e) => e.chainId === chainId,
+    )?.explorerUrl;
+    console.log(`交易已发送: ${explorerUrl}/tx/${tx.hash}`);
     const receipt = await tx.wait();
     if (!receipt) {
       throw new Error("Transaction receipt is null.");
@@ -71,6 +72,9 @@ export async function executeTransactions(
   provider: ethers.JsonRpcProvider,
   privateKeys: string[],
   contractAddress: string,
+  functionName: string,
+  params: any[],
+  chainId: number,
   concurrency = 1,
 ): Promise<CallResult[]> {
   const results: CallResult[] = [];
@@ -78,7 +82,14 @@ export async function executeTransactions(
     const chunk = privateKeys.slice(i, i + concurrency);
     const chunkResults = await Promise.all(
       chunk.map((pk) =>
-        executeSingleTransaction(provider, pk, contractAddress),
+        executeSingleTransaction(
+          provider,
+          pk,
+          contractAddress,
+          functionName,
+          params,
+          chainId,
+        ),
       ),
     );
     results.push(...chunkResults);

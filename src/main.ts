@@ -8,13 +8,18 @@ import { executeTransactions } from "./transaction";
 async function main() {
   await displayWelcome();
   const chain = await selectChain();
-  const { contractAddress, concurrency } = await getUserInput();
+  const { contractAddress, concurrency, functionName, params } =
+    await getUserInput();
   const provider = new ethers.JsonRpcProvider(chain.rpcUrl);
   const privateKeys = await getPrivateKeys();
+
   const results = await executeTransactions(
     provider,
     privateKeys,
     contractAddress,
+    functionName,
+    params,
+    chain.chainId,
     parseInt(concurrency),
   );
 

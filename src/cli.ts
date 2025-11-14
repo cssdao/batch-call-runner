@@ -1,6 +1,7 @@
 import inquirer from "inquirer";
 import { ethers } from "ethers";
 import { SUPPORTED_CHAINS, ChainConfig } from "./config";
+import { selectFunctionAndParams } from "./abi";
 
 export async function displayWelcome() {
   console.log("\n🚀 批量合约调用工具");
@@ -17,7 +18,7 @@ export async function selectChain(): Promise<ChainConfig> {
       name: "chainIndex",
       message: "请选择网络:",
       choices: SUPPORTED_CHAINS.map((chain, index) => ({
-        name: `${index + 1}.${chain.name} (Chain ID: ${chain.chainId})`,
+        name: `${index + 1}. ${chain.name} (Chain ID: ${chain.chainId})`,
         value: index,
       })),
     },
@@ -27,7 +28,7 @@ export async function selectChain(): Promise<ChainConfig> {
 }
 
 export async function getUserInput() {
-  return await inquirer.prompt([
+  const basic = await inquirer.prompt([
     {
       type: "input",
       name: "contractAddress",
@@ -41,9 +42,17 @@ export async function getUserInput() {
       message: "请输入并发执行数量 (1-10):",
       default: "1",
       validate: (input: string) => {
-        const num = parseInt(input);
-        return num >= 1 && num <= 10 ? true : "请输入1-10之间的数字";
+        const n = parseInt(input);
+        return n >= 1 && n <= 10 ? true : "请输入 1-10 之间的数字";
       },
     },
   ]);
+
+  const fnInfo = await selectFunctionAndParams();
+
+  return {
+    ...basic,
+    functionName: fnInfo.functionName,
+    params: fnInfo.params,
+  };
 }

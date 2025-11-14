@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { ethers } from "ethers";
 
 export async function getPrivateKeys(): Promise<string[]> {
   const walletsPath = path.join(process.cwd(), "wallets.txt");
@@ -18,6 +17,6 @@ export async function getPrivateKeys(): Promise<string[]> {
       throw new Error(`无效私钥: ${key.slice(0, 10)}...`);
   });
 
-  console.log(`读取 ${keys.length} 个私钥`);
+  console.log(`读取 ${keys.length} 个地址`);
   return keys;
 }
