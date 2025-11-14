@@ -8,8 +8,7 @@ const SUPPORTED_CHAINS: ChainConfig[] = [
   {
     name: "Ethereum Mainnet",
     rpcUrl:
-      process.env.ETHEREUM_RPC_URL ||
-      "https://mainnet.infura.io/v3/YOUR_INFURA_KEY",
+      process.env.ETHEREUM_RPC_URL || "https://ethereum-rpc.publicnode.com",
     chainId: 1,
   },
   {
