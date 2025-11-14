@@ -1,6 +1,6 @@
 import inquirer from "inquirer";
-import { SUPPORTED_CHAINS, ChainConfig } from "./config";
 import { ethers } from "ethers";
+import { SUPPORTED_CHAINS, ChainConfig } from "./config";
 
 export async function displayWelcome() {
   console.log("\n🚀 批量合约调用工具");
