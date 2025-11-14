@@ -1,231 +1,352 @@
 # Batch Call Runner
 
-一个用于批量调用智能合约的TypeScript工具，支持多条主网和测试网。
+<div align="center">
 
-## 功能特性
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-43853D?logo=node.js&logoColor=white)
+![Ethers.js](https://img.shields.io/badge/Ethers.js-3C3C3D?logo=ethereum&logoColor=white)
+![License](https://img.shields.io/badge/License-ISC-blue.svg)
 
-- 🔗 支持多条主流区块链网络
-- 📝 支持批量交易发送
-- 👛 多钱包批量调用（从wallets.txt读取私钥）
-- 🧪 Dry-run模式，预先估算Gas
-- 💾 自动保存执行结果到JSON文件
-- 🔒 安全的私钥输入处理
-- 📊 详细的执行统计和日志
-- 🎯 智能地址替换（自动提取inputData公共前缀，拼接对应钱包地址）
+**智能合约批量调用工具** - 支持多链、多钱包、并发执行的高效批量交易工具
 
-## 支持的网络
+</div>
 
-- Ethereum Mainnet
-- Sepolia Testnet
-- Polygon Mainnet
-- BSC Mainnet
-- Arbitrum Mainnet
+## ✨ 功能特性
 
-## 安装和设置
+- 🌐 **多链支持** - 支持 Ethereum、Base、Polygon、BSC、Arbitrum 等主流网络
+- 🚀 **并发执行** - 支持 1-10 个并发，大幅提升批量操作效率
+- 🔑 **智能地址填充** - 自动识别并填充合约函数中的 address 参数
+- 📋 **ABI 驱动** - 通过 ABI.json 自动解析合约函数，无需手动构造交易数据
+- 👛 **多钱包管理** - 从 wallets.txt 批量读取私钥，支持大规模操作
+- 💾 **结果持久化** - 自动保存执行结果到带时间戳的 JSON 文件
+- 🛡️ **安全验证** - 完整的余额检查、Gas 估算、私钥格式验证
+- 🎯 **实时监控** - 详细的执行日志，包含交易哈希、Gas 使用量、区块号等
 
-### 1. 克隆仓库
+## 🌍 支持的网络
+
+| 网络 | Chain ID | RPC 端点 | 浏览器 |
+|------|----------|----------|--------|
+| Ethereum Mainnet | 1 | publicnode.com | etherscan.io |
+| Base Mainnet | 8453 | mainnet.base.org | basescan.org |
+| Polygon Mainnet | 137 | polygon-rpc.com | polygonscan.com |
+| BSC Mainnet | 56 | bsc-dataseed1.binance.org | bscscan.com |
+| Arbitrum Mainnet | 42161 | arb1.arbitrum.io/rpc | arbiscan.io |
+| Sepolia Testnet | 11155111 | infura.io* | sepolia.etherscan.io |
+
+*需要配置 Infura Key
+
+## 🚀 快速开始
+
+### 前置要求
+
+- Node.js >= 16.0.0
+- npm 或 yarn
+- 基本的智能合约交互知识
+
+### 1. 安装项目
 
 ```bash
-git clone git@github.com:cssdao/batch-call-runner.git
+# 克隆仓库
+git clone https://github.com/cssdao/batch-call-runner.git
 cd batch-call-runner
-```
 
-### 2. 安装依赖
-
-```bash
+# 安装依赖
 npm install
 ```
 
-### 3. 配置钱包文件
+### 2. 配置钱包
 
-创建 `wallets.txt` 文件，每行一个私钥：
+创建 `wallets.txt` 文件：
 
 ```bash
-# 复制示例文件
-cp wallets.txt.example wallets.txt
-
-# 编辑 wallets.txt 文件，添加您的私钥（每行一个）
+# 示例 wallets.txt
+0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890
+5678901234567890567890123456789056789012345678905678901234567890
 ```
 
 **私钥格式要求：**
-- 私钥必须是64位十六进制字符
-- 可以有或没有 `0x` 前缀
+- 必须是64位十六进制字符
+- 支持有无 `0x` 前缀
 - 每行一个私钥
-- 空行和以 `#` 开头的行会被忽略
+- 空行自动过滤
 
-示例 `wallets.txt`：
+### 3. 配置合约 ABI
+
+确保 `ABI.json` 文件存在，包含目标合约的 ABI 定义：
+
+```json
+[
+  {
+    "name": "pledge",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "name": "has_pledged",
+    "inputs": [{"name": "who", "type": "address"}],
+    "outputs": [{"name": "", "type": "bool"}],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
 ```
-0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
-1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
-```
 
-### 4. 配置环境变量（可选）
-
-复制环境变量示例文件：
+### 4. 运行工具
 
 ```bash
-cp .env.example .env
-```
-
-编辑 `.env` 文件，添加你的RPC端点URL。如果不配置，将使用默认的公共RPC端点。
-
-## 使用方法
-
-### 启动程序
-
-```bash
-npm start
-```
-
-### 执行流程
-
-1. **启动程序** - 显示欢迎信息
-2. **选择网络** - 从支持的网络列表中选择
-3. **输入参数**：
-   - 合约地址
-   - 交易数据 (inputData, 十六进制格式)
-4. **选择模式**：
-   - **Dry-run**: 仅预览交易，估算Gas消耗
-   - **实际执行**: 发送真实交易到区块链
-5. **批量执行**：
-   - 程序自动从 `wallets.txt` 读取所有私钥
-   - 为每个私钥生成对应的钱包地址
-   - 智能提取inputData的公共前缀，拼接对应钱包地址
-   - 依次为每个钱包发送交易
-6. **执行结果**：
-   - 显示详细执行日志
-   - 保存结果到JSON文件
-
-### 智能地址替换功能
-
-本工具的核心特性是能够智能地处理需要替换地址的批量操作：
-
-1. **地址提取**：自动提取inputData的公共前缀部分
-2. **地址生成**：为每个私钥生成对应的钱包地址
-3. **数据拼接**：将公共前缀与钱包地址拼接成完整的inputData
-4. **批量执行**：为每个钱包使用对应的inputData进行交易
-
-例如，如果原始inputData为：
-```
-0xa9059cbb000000000000000000000000placeholder_address_here000000000000000000000000000000000000000000000000000000000000000001
-```
-
-工具会自动提取前缀部分，并为每个钱包地址生成对应的完整inputData。
-
-### 示例
-
-#### Dry-run模式示例
-
-```bash
-# 启动程序
+# 启动主程序
 npm start
 
-# 选择网络: Ethereum Mainnet
-# 输入合约地址: 0x1234...abcd
-# 输入inputData: 0xa9059cbb000000000000000000000000... (包含模板地址)
-# 选择模式: Yes (dry-run)
-# 程序自动读取 wallets.txt 中的所有私钥并预览
+# 生成地址列表
+npm run address
+
+# 生成地址列表（包含余额）
+npm run address-balance
 ```
 
-#### 实际执行示例
+## 📖 使用指南
+
+### 主要工作流程
+
+1. **选择网络** - 从支持的网络列表中选择目标链
+2. **输入合约地址** - 提供目标智能合约地址
+3. **设置并发数** - 选择 1-10 个并发执行线程
+4. **选择函数** - 从 ABI 自动解析可用函数列表
+5. **填写参数** - 根据函数定义输入相应参数
+6. **批量执行** - 工具自动处理所有钱包并发送交易
+7. **查看结果** - 控制台显示执行进度和结果
+
+### 智能地址填充机制
+
+工具会自动识别合约函数中的 `address` 和 `address[]` 类型参数：
+
+```solidity
+// 合约函数示例
+function pledge(address user, uint256 amount) public;
+function batchTransfer(address[] recipients, uint256 amount) public;
+```
+
+- `address` 类型：自动填充当前钱包地址
+- `address[]` 类型：自动填充包含当前钱包地址的数组
+- 其他类型：通过交互式界面输入
+
+### 地址生成工具
 
 ```bash
-# 启动程序
-npm start
+# 基础地址生成
+npm run address
 
-# 选择网络: Sepolia Testnet
-# 输入合约地址: 0x1234...abcd
-# 输入inputData: 0xa9059cbb000000000000000000000000... (包含模板地址)
-# 选择模式: No (实际执行)
-# 程序使用 wallets.txt 中的所有私钥依次发送交易
+# 包含余额查询的地址生成
+npm run address-balance
 ```
 
-## 输出文件格式
+输出示例：
+```
+0x822b52eCD838C1072cb7Fa14Ded7e407f0A99b8e
+0xC73cE72b70566Ef7Ff940542AF6cc8e453bdfC70
+0xbd0cF90D06237cd28072AAFdFeDCE647527F4E10
+```
 
-执行结果会自动保存到 `results-{timestamp}.json` 文件中：
+或带余额格式：
+```
+0x822b52eCD838C1072cb7Fa14Ded7e407f0A99b8e-1.234567
+0xC73cE72b70566Ef7Ff940542AF6cc8e453bdfC70-0.987654
+```
+
+## 📊 输出格式
+
+执行结果自动保存为 `results-{timestamp}.json`：
 
 ```json
 {
-  "timestamp": "2024-01-01T00:00:00.000Z",
+  "timestamp": "2025-11-14T09:59:40.452Z",
   "chain": "Ethereum Mainnet",
-  "contractAddress": "0x1234...abcd",
-  "inputData": "0xa9059cbb...",
-  "callCount": 3,
-  "dryRun": false,
   "results": [
     {
-      "hash": "0x...",
+      "hash": "0xe158c53e902e33caa6bc4fef832336b6035e13ad2fedfeae7930092207865776",
       "success": true,
-      "gasEstimate": "50000",
-      "actualGasUsed": "48765",
-      "blockNumber": 18500000,
-      "address": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b9",
-      "privateKey": "0x1234567890..."
-    },
-    {
-      "hash": "0x...",
-      "success": true,
-      "gasEstimate": "50000",
-      "actualGasUsed": "48912",
-      "blockNumber": 18500001,
-      "address": "0x8ba1f109551bD432803012645Hac136c82CbeA46",
-      "privateKey": "0xabcdef1234..."
+      "actualGasUsed": "49839",
+      "address": "0x822b52eCD838C1072cb7Fa14Ded7e407f0A99b8e"
     },
     {
       "success": false,
-      "error": "Insufficient funds for gas * price + value",
-      "address": "0x5aAeb6053f3E94C9b9A09f33669435E7Ef1BeAed",
-      "privateKey": "0x567890abcd..."
+      "error": "Insufficient balance. Need 0.001 more ETH for gas fees",
+      "address": "0x75864aA990C6292B39E68080De4B81c633568Ab1"
     }
   ]
 }
 ```
 
-## 安全注意事项
+## 🛡️ 安全特性
 
-⚠️ **重要安全提醒**：
+### 余额验证
+- 自动检查每个钱包的 ETH 余额
+- 预估 Gas 费用（包含 20% 缓冲）
+- 余额不足时跳过执行并记录错误
 
-1. **测试先行**: 始终先在测试网（如Sepolia）上进行测试
-2. **使用Dry-run**: 在主网执行前，务必使用dry-run模式验证交易
-3. **私钥安全**:
-   - 不要在公共计算机上使用
-   - 确保私钥不会泄露
-   - 建议使用专门的批处理钱包
-   - wallets.txt 文件包含敏感信息，请妥善保管
-   - 不要将 wallets.txt 文件提交到版本控制系统
-   - 使用完成后建议删除或移动到安全位置
-4. **Gas费用**: 批量交易会产生Gas费用，请确保账户余额充足
-5. **合约交互**: 确保你了解与目标合约交互的后果
+### Gas 优化
+- 自动 Gas 价格估算
+- 智能Gas限制设置（预估 + 20% 缓冲）
+- 失败重试机制
 
-## 开发
+### 私钥保护
+- 本地文件读取，不上传云端
+- 严格的私钥格式验证
+- 内存中安全处理
 
-### 构建项目
+## ⚙️ 配置选项
 
-```bash
-npm run build
+### 网络配置
+网络配置存储在 `src/config.ts` 中，支持自定义：
+- RPC 端点
+- Chain ID
+- 区块链浏览器 URL
+
+### 并发控制
+- 支持 1-10 个并发线程
+- 自动节流（500ms 延迟）
+- 防止 RPC 限制
+
+## 🔧 开发指南
+
+### 项目结构
+```
+batch-call-runner/
+├── src/
+│   ├── main.ts          # 主程序入口
+│   ├── cli.ts           # 命令行交互界面
+│   ├── config.ts        # 网络配置
+│   ├── wallet.ts        # 钱包管理
+│   ├── transaction.ts   # 交易执行
+│   ├── abi.ts           # ABI 处理
+│   ├── addresses.ts     # 地址生成工具
+│   └── types.ts         # 类型定义
+├── ABI.json             # 合约 ABI 定义
+├── wallets.txt          # 私钥列表
+└── package.json         # 项目配置
 ```
 
-### 开发模式
+### 核心技术栈
+- **ethers.js v6** - 以太坊交互库
+- **inquirer** - 交互式命令行界面
+- **TypeScript** - 类型安全的开发体验
+- **ts-node** - 直接运行 TypeScript 代码
 
-```bash
-# 使用ts-node直接运行
-npx ts-node src/index.ts
+### 执行流程图
+```
+启动程序 → 选择网络 → 输入合约地址 → 选择并发数
+    ↓
+解析 ABI → 选择函数 → 输入参数 → 验证私钥
+    ↓
+并发执行 → 实时监控 → 结果保存 → 完成报告
 ```
 
-## 依赖项
+## ⚠️ 安全注意事项
 
-- `ethers`: 以太坊库
-- `inquirer`: 命令行交互
-- `typescript`: TypeScript支持
+### 🚨 重要提醒
 
-## 许可证
+1. **测试先行**
+   - ✅ 必须先在测试网充分测试
+   - ✅ 验证合约地址和 ABI 的正确性
+   - ✅ 确认交易逻辑符合预期
 
-ISC
+2. **资金安全**
+   - 💰 使用专门的批处理钱包，避免使用主钱包
+   - 💰 确保每个钱包有足够的 ETH 余额
+   - 💰 了解目标合约的功能和风险
+   - 💰 建议从少量钱包开始测试
 
-## 贡献
+3. **私钥保护**
+   - 🔒 `wallets.txt` 包含敏感信息，妥善保管
+   - 🔒 不要提交到版本控制系统
+   - 🔒 使用后及时删除或移动到安全位置
+   - 🔒 定期轮换批处理钱包
 
-欢迎提交Issue和Pull Request！
+4. **网络风险**
+   - 🌐 注意 RPC 稳定性和限制
+   - 🌐 监控网络拥堵情况
+   - 🌐 考虑使用私有 RPC 端点
 
-## 免责声明
+## 📋 故障排除
 
-本工具仅供学习和开发使用。用户需要自行承担使用本工具的风险，包括但不限于资金损失、交易失败等。开发者不对因使用本工具造成的任何损失承担责任。
+### 常见问题
+
+<details>
+<summary><strong>Q: 私钥格式错误</strong></summary>
+
+A: 确保私钥为64位十六进制字符，支持有无 0x 前缀：
+```
+✅ 正确: 0x1234567890abcdef...
+✅ 正确: 1234567890abcdef...
+❌ 错误: 0x123 (长度不足)
+```
+</details>
+
+<details>
+<summary><strong>Q: 余额不足错误</strong></summary>
+
+A: 检查钱包余额是否足够支付 Gas 费用，可以使用 `npm run address-balance` 查询所有钱包余额。
+</details>
+
+<details>
+<summary><strong>Q: 合约函数未找到</strong></summary>
+
+A: 确保 ABI.json 文件包含目标合约的完整 ABI，且函数名称完全匹配。
+</details>
+
+<details>
+<summary><strong>Q: 并发执行失败</strong></summary>
+
+A: 降低并发数，或检查 RPC 端点的稳定性。建议从并发数 1 开始测试。
+</details>
+
+## 📝 更新日志
+
+### v1.0.0
+- ✨ 支持多链批量交易
+- ✨ 智能地址填充机制
+- ✨ 并发执行控制
+- ✨ 实时余额检查
+- ✨ 结果持久化存储
+
+## 🤝 贡献指南
+
+1. Fork 项目
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## 📄 许可证
+
+本项目采用 [ISC 许可证](LICENSE)。
+
+## ⚠️ 免责声明
+
+<div align="center" style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+
+**重要声明**
+
+本工具仅供学习和开发使用。使用者需要：
+
+- 🔄 自行承担使用风险
+- 💰 负责资金安全管理
+- 🔍 了解智能合约交互后果
+- ⚖️ 遵守相关法律法规
+
+开发者不对因使用本工具造成的任何损失承担责任。
+
+</div>
+
+---
+
+<div align="center">
+
+**如果这个项目对您有帮助，请考虑给一个 ⭐**
+
+Made with ❤️ by [CSS DAO](https://github.com/cssdao)
+
+</div>
