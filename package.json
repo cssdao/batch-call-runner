@@ -8,7 +8,8 @@
     "address": "ts-node src/addresses.ts",
     "address-balance": "ts-node src/addresses.ts --balance",
     "build": "tsc",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "danger": "danger ci"
   },
   "repository": {
     "type": "git",
@@ -27,6 +28,7 @@
     "ethers": "^6.15.0",
     "inquirer": "^12.11.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "danger": "^13.0.4"
   }
 }
