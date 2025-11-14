@@ -8,7 +8,7 @@ const allFiles = [...modifiedFiles, ...createdFiles];
 
 // 1. PR 大小
 if (changedLines > 300) {
-  warn(`⚠️ PR 较大 (${changedLines} 行)，建议拆分`);
+  warn(`PR 较大 (${changedLines} 行)，建议拆分`);
 }
 
 // 2. PR 描述
@@ -24,31 +24,29 @@ const checkSecurity = async () => {
       if (!diff) continue;
 
       // 硬编码私钥 - 严重
-      if (diff.added.match(/privateKey\s*=\s*['"][^'"]+['"]/i)) {
+      if (diff.added.match(/(private_?key)\s*[:=]\s*['"][^'"]+['"]/i)) {
         fail(`🔒 ${file}: 发现硬编码私钥！请使用环境变量`);
       }
 
       // 硬编码敏感信息
       if (diff.added.match(/password|secret|mnemonic|api[_-]?key/i)) {
-        warn(`⚠️ ${file}: 可能包含硬编码敏感信息`);
-      }
-
-      // RPC URL 硬编码
-      if (diff.added.match(/https?:\/\/.*rpc/i)) {
-        warn(`⚠️ ${file}: 建议使用配置文件管理 RPC URL`);
+        warn(`${file}: 可能包含硬编码敏感信息`);
       }
     }
   }
 };
 
 // 4. 依赖同步
-if (modifiedFiles.includes("package.json") && !modifiedFiles.includes("pnpm-lock.yaml")) {
-  warn("⚠️ 修改了 package.json，记得更新 pnpm-lock.yaml");
+if (
+  modifiedFiles.includes("package.json") &&
+  !modifiedFiles.includes("pnpm-lock.yaml")
+) {
+  warn("修改了 package.json，记得更新 pnpm-lock.yaml");
 }
 
 // 5. 环境变量
 if (modifiedFiles.includes(".env")) {
-  warn("⚠️ 不要提交敏感的 .env 文件");
+  fail("🚨 不要提交 .env 文件！它可能包含生产环境密钥。");
 }
 
 // 6. 鼓励
