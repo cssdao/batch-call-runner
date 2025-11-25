@@ -28,12 +28,10 @@
 |------|----------|----------|--------|
 | Ethereum Mainnet | 1 | publicnode.com | etherscan.io |
 | Base Mainnet | 8453 | mainnet.base.org | basescan.org |
+| Monad Mainnet | 143 | rpc.monad.xyz | monadvision.com |
 | Polygon Mainnet | 137 | polygon-rpc.com | polygonscan.com |
 | BSC Mainnet | 56 | bsc-dataseed1.binance.org | bscscan.com |
 | Arbitrum Mainnet | 42161 | arb1.arbitrum.io/rpc | arbiscan.io |
-| Sepolia Testnet | 11155111 | infura.io* | sepolia.etherscan.io |
-
-*需要配置 Infura Key
 
 ## 🚀 快速开始
 
