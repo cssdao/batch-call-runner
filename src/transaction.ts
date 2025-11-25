@@ -15,9 +15,12 @@ export async function executeSingleTransaction(
   const address = wallet.address;
   const balance = await provider.getBalance(address);
   const inputData = generateInputData(address, functionName, params);
+  const { explorerUrl, symbol } = SUPPORTED_CHAINS.find(
+    (e) => e.chainId === chainId,
+  ) || { explorerUrl: "", symbol: "" };
 
   console.log(
-    `📤 钱包: ${address}，当前余额: ${ethers.formatEther(balance)} ETH`,
+    `📤 钱包: ${address}，当前余额: ${ethers.formatEther(balance)} ${symbol}`,
   );
 
   try {
@@ -48,9 +51,6 @@ export async function executeSingleTransaction(
       gasLimit: gasLimit,
       gasPrice: gasPrice,
     });
-    const explorerUrl = SUPPORTED_CHAINS.find(
-      (e) => e.chainId === chainId,
-    )?.explorerUrl;
     console.log(`交易已发送: ${explorerUrl}/tx/${tx.hash}`);
     const receipt = await tx.wait();
     if (!receipt) {
@@ -64,6 +64,7 @@ export async function executeSingleTransaction(
       address: wallet.address,
     };
   } catch (e: any) {
+    console.error(`交易失败: ${e.message}`);
     return { success: false, error: e.message, address: wallet.address };
   }
 }
