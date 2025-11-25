@@ -1,13 +1,48 @@
 [
   {
+    "constant": true,
     "inputs": [
-      { "internalType": "address", "name": "account", "type": "address" },
-      { "internalType": "uint256", "name": "id", "type": "uint256" }
+      { "name": "account", "type": "address" },
+      { "name": "id", "type": "uint256" }
     ],
     "name": "balanceOf",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
+    "outputs": [{ "name": "balance", "type": "uint256" }],
     "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      { "name": "accounts", "type": "address[]" },
+      { "name": "ids", "type": "uint256[]" }
+    ],
+    "name": "balanceOfBatch",
+    "outputs": [{ "name": "balances", "type": "uint256[]" }],
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "from", "type": "address" },
+      { "name": "to", "type": "address" },
+      { "name": "id", "type": "uint256" },
+      { "name": "amount", "type": "uint256" },
+      { "name": "data", "type": "bytes" }
+    ],
+    "name": "safeTransferFrom",
+    "outputs": [],
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "operator", "type": "address" },
+      { "indexed": true, "name": "from", "type": "address" },
+      { "indexed": true, "name": "to", "type": "address" },
+      { "indexed": false, "name": "id", "type": "uint256" },
+      { "indexed": false, "name": "value", "type": "uint256" }
+    ],
+    "name": "TransferSingle",
+    "type": "event"
   },
   {
     "inputs": [],
