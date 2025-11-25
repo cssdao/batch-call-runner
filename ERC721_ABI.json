@@ -1,55 +1,45 @@
 [
   {
-    "inputs": [
-      { "internalType": "address", "name": "account", "type": "address" }
-    ],
+    "constant": true,
+    "inputs": [{ "name": "_owner", "type": "address" }],
     "name": "balanceOf",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
+    "outputs": [{ "name": "balance", "type": "uint256" }],
     "type": "function"
   },
   {
-    "inputs": [
-      { "internalType": "uint256", "name": "tokenId", "type": "uint256" }
-    ],
+    "constant": true,
+    "inputs": [{ "name": "_tokenId", "type": "uint256" }],
     "name": "ownerOf",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "stateMutability": "view",
+    "outputs": [{ "name": "owner", "type": "address" }],
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "totalSupply",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "mintPrice",
-    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "mintActive",
-    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
+    "constant": false,
     "inputs": [
-      { "internalType": "address", "name": "purchaser", "type": "address" },
-      { "internalType": "uint256", "name": "gas", "type": "uint256" },
-      { "internalType": "string", "name": "ndtname", "type": "string" },
-      { "internalType": "uint256", "name": "timestamp", "type": "uint256" },
-      { "internalType": "bytes", "name": "signature", "type": "bytes" }
+      { "name": "_from", "type": "address" },
+      { "name": "_to", "type": "address" },
+      { "name": "_tokenId", "type": "uint256" }
     ],
-    "name": "mintNFTWithSignature",
+    "name": "safeTransferFrom",
     "outputs": [],
-    "stateMutability": "payable",
     "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [{ "name": "_tokenId", "type": "uint256" }],
+    "name": "tokenURI",
+    "outputs": [{ "name": "uri", "type": "string" }],
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "from", "type": "address" },
+      { "indexed": true, "name": "to", "type": "address" },
+      { "indexed": true, "name": "tokenId", "type": "uint256" }
+    ],
+    "name": "Transfer",
+    "type": "event"
   },
   {
     "inputs": [],
