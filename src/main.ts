@@ -8,7 +8,7 @@ import { executeTransactions } from "./transaction";
 async function main() {
   await displayWelcome();
   const chain = await selectChain();
-  const { contractAddress, concurrency, functionName, params } =
+  const { contractAddress, concurrency, executionCount, minDelay, maxDelay, functionName, params, value } =
     await getUserInput();
   const provider = new ethers.JsonRpcProvider(chain.rpcUrl);
   const privateKeys = await getPrivateKeys();
@@ -21,6 +21,10 @@ async function main() {
     params,
     chain.chainId,
     parseInt(concurrency),
+    value,
+    parseInt(executionCount),
+    parseInt(minDelay) * 1000, // 转换为毫秒
+    parseInt(maxDelay) * 1000, // 转换为毫秒
   );
 
   const filePath = path.join(process.cwd(), `results-${Date.now()}.json`);
@@ -35,4 +39,14 @@ async function main() {
   console.log(`结果已保存到: ${filePath}`);
 }
 
-if (require.main === module) main();
+if (require.main === module) {
+  main().catch((error) => {
+    if (error.name === 'ExitPromptError') {
+      console.log('\n\n👋 操作已取消');
+      process.exit(0);
+    } else {
+      console.error('\n❌ 发生错误:', error.message);
+      process.exit(1);
+    }
+  });
+}
