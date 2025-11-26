@@ -7,6 +7,8 @@ interface CallResult {
   blockNumber?: number;
   address?: string;
   privateKey?: string;
+  executionIndex?: number;  // 当前执行的次数（第几次）
+  totalExecutions?: number; // 总执行次数
 }
 
 interface Results {
