@@ -2,6 +2,11 @@ import inquirer from "inquirer";
 import { ethers } from "ethers";
 import { SUPPORTED_CHAINS, ChainConfig } from "./config";
 import { selectFunctionAndParams } from "./abi";
+import {
+  getTransactionInputData,
+  parseAndReplaceAddress,
+  confirmParsedData,
+} from "./input-data-parser";
 
 export async function displayWelcome() {
   console.log("\n🚀 批量合约调用工具");
@@ -27,7 +32,32 @@ export async function selectChain(): Promise<ChainConfig> {
   return SUPPORTED_CHAINS[chainIndex as number];
 }
 
+async function selectInputMethod(): Promise<"abi" | "transaction"> {
+  const { method } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "method",
+      message: "请选择输入方式:",
+      choices: [
+        {
+          name: "📋 使用 ABI 文件 (推荐)",
+          value: "abi",
+        },
+        {
+          name: "🔍 使用交易数据 (无 ABI 时使用)",
+          value: "transaction",
+        },
+      ],
+    },
+  ]);
+
+  return method;
+}
+
 export async function getUserInput() {
+  // 选择输入方式
+  const inputMethod = await selectInputMethod();
+
   const basic = await inquirer.prompt([
     {
       type: "input",
@@ -109,13 +139,46 @@ export async function getUserInput() {
     },
   ]);
 
-  const fnInfo = await selectFunctionAndParams();
+  // 根据选择的输入方式获取函数信息
+  let functionName: string;
+  let params: any[];
+  let transactionData: string | undefined;
+
+  if (inputMethod === "abi") {
+    // 使用 ABI 文件
+    const fnInfo = await selectFunctionAndParams();
+    functionName = fnInfo.functionName;
+    params = fnInfo.params;
+  } else {
+    // 使用交易数据
+    const originalInputData = await getTransactionInputData();
+
+    // 为了测试解析，我们使用一个示例地址
+    const sampleAddress = "0x1234567890123456789012345678901234567890";
+    const parsedInputData = parseAndReplaceAddress(
+      originalInputData,
+      sampleAddress,
+    );
+
+    // 显示解析结果并确认
+    const confirmed = await confirmParsedData(parsedInputData);
+
+    if (!confirmed) {
+      throw new Error("用户取消了操作");
+    }
+
+    functionName = "parsed_function"; // 临时函数名
+    params = []; // 参数已经编码在 transactionData 中
+    transactionData = originalInputData;
+  }
 
   return {
     ...basic,
     ...delayConfig,
-    functionName: fnInfo.functionName,
-    params: fnInfo.params,
+    functionName,
+    params,
     value: valueInput.value,
+    inputMethod,
+    transactionData,
   };
 }

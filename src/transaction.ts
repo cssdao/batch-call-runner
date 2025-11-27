@@ -2,6 +2,7 @@ import { ethers } from "ethers";
 import { CallResult } from "./types";
 import { generateInputData } from "./abi";
 import { SUPPORTED_CHAINS } from "./config";
+import { parseAndReplaceAddress } from "./input-data-parser";
 
 export async function executeSingleTransaction(
   provider: ethers.JsonRpcProvider,
@@ -11,11 +12,21 @@ export async function executeSingleTransaction(
   params: any[],
   chainId: number,
   valueInEther = "0",
+  transactionData?: string,
 ): Promise<any> {
   const wallet = new ethers.Wallet(privateKey, provider);
   const address = wallet.address;
   const balance = await provider.getBalance(address);
-  const inputData = generateInputData(address, functionName, params);
+
+  let inputData: string;
+  if (transactionData) {
+    // 使用预解析的交易数据，只需要替换地址
+    inputData = parseAndReplaceAddress(transactionData, address, false);
+  } else {
+    // 使用传统的 ABI 方式生成数据
+    inputData = generateInputData(address, functionName, params);
+  }
+
   const value = ethers.parseEther(valueInEther);
   const { explorerUrl, symbol } = SUPPORTED_CHAINS.find(
     (e) => e.chainId === chainId,
@@ -72,7 +83,6 @@ export async function executeSingleTransaction(
   }
 }
 
-
 export async function executeTransactions(
   provider: ethers.JsonRpcProvider,
   privateKeys: string[],
@@ -85,6 +95,7 @@ export async function executeTransactions(
   executionCount = 1,
   minDelayMs = 0,
   maxDelayMs = 5000,
+  transactionData?: string,
 ): Promise<CallResult[]> {
   const results: CallResult[] = [];
   let walletIndex = 0;
@@ -100,9 +111,15 @@ export async function executeTransactions(
       console.log(`\n🔑 开始处理钱包: ${walletAddress}`);
 
       // 对同一个钱包的所有交易进行串行执行
-      for (let executionIndex = 1; executionIndex <= executionCount; executionIndex++) {
+      for (
+        let executionIndex = 1;
+        executionIndex <= executionCount;
+        executionIndex++
+      ) {
         try {
-          console.log(`📋 [${walletAddress}] 执行第 ${executionIndex}/${executionCount} 次交易`);
+          console.log(
+            `📋 [${walletAddress}] 执行第 ${executionIndex}/${executionCount} 次交易`,
+          );
 
           const result = await executeSingleTransaction(
             provider,
@@ -112,6 +129,7 @@ export async function executeTransactions(
             params,
             chainId,
             valueInEther,
+            transactionData,
           );
 
           // 添加执行次数信息到结果中
@@ -122,13 +140,22 @@ export async function executeTransactions(
           });
 
           // 如果不是最后一次执行，添加随机延迟
-          if (executionIndex < executionCount && (minDelayMs > 0 || maxDelayMs > 0)) {
-            const delayMs = Math.floor(Math.random() * (maxDelayMs - minDelayMs + 1)) + minDelayMs;
-            console.log(`⏱️  [${walletAddress}] 等待 ${(delayMs / 1000).toFixed(1)} 秒后执行下次交易...`);
-            await new Promise(resolve => setTimeout(resolve, delayMs));
+          if (
+            executionIndex < executionCount &&
+            (minDelayMs > 0 || maxDelayMs > 0)
+          ) {
+            const delayMs =
+              Math.floor(Math.random() * (maxDelayMs - minDelayMs + 1)) +
+              minDelayMs;
+            console.log(
+              `⏱️  [${walletAddress}] 等待 ${(delayMs / 1000).toFixed(1)} 秒后执行下次交易...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
           }
         } catch (err) {
-          console.error(`❌ [${walletAddress}] 第 ${executionIndex}/${executionCount} 次交易失败: ${(err as any).message}`);
+          console.error(
+            `❌ [${walletAddress}] 第 ${executionIndex}/${executionCount} 次交易失败: ${(err as any).message}`,
+          );
 
           results.push({
             success: false,
@@ -140,7 +167,9 @@ export async function executeTransactions(
 
           // 失败后立即重试，不等待延迟
           if (executionIndex < executionCount) {
-            console.log(`🔄 [${walletAddress}] 立即重试第 ${executionIndex + 1}/${executionCount} 次交易...`);
+            console.log(
+              `🔄 [${walletAddress}] 立即重试第 ${executionIndex + 1}/${executionCount} 次交易...`,
+            );
           }
         }
 

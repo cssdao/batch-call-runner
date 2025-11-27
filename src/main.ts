@@ -8,7 +8,7 @@ import { executeTransactions } from "./transaction";
 async function main() {
   await displayWelcome();
   const chain = await selectChain();
-  const { contractAddress, concurrency, executionCount, minDelay, maxDelay, functionName, params, value } =
+  const { contractAddress, concurrency, executionCount, minDelay, maxDelay, functionName, params, value, inputMethod, transactionData } =
     await getUserInput();
   const provider = new ethers.JsonRpcProvider(chain.rpcUrl);
   const privateKeys = await getPrivateKeys();
@@ -25,6 +25,7 @@ async function main() {
     parseInt(executionCount),
     parseInt(minDelay) * 1000, // 转换为毫秒
     parseInt(maxDelay) * 1000, // 转换为毫秒
+    transactionData, // 传递交易数据
   );
 
   const filePath = path.join(process.cwd(), `results-${Date.now()}.json`);
